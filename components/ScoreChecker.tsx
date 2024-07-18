@@ -96,7 +96,20 @@ const subjectMap: { [key: string]: string } = {
   'lich_su': 'lịch sử',
   'dia_li': 'địa lí',
   'gdcd': 'GDCD',
-  'ma_ngoai_ngu': 'Mã ngoại ngữ'
+};
+
+const examGroups = [
+  { code: 'A00', name: 'Khối A00 - Toán, Vật lý, Hóa học' },
+  { code: 'A01', name: 'Khối A01 - Toán, Vật lý, Tiếng Anh' },
+  { code: 'A02', name: 'Khối A02 - Toán, Vật lí , Sinh học' },
+  // Add other exam groups here
+];
+
+const examGroupMap: { [key: string]: string[] } = {
+  'A00': ['toan', 'vat_li', 'hoa_hoc'],
+  'A01': ['toan', 'vat_li', 'ngoai_ngu'],
+  'A02': ['toan', 'vat_li', 'sinh_hoc'],
+  // Map other exam groups to their corresponding subjects
 };
 
 const ScoreChecker: React.FC = () => {
@@ -105,21 +118,27 @@ const ScoreChecker: React.FC = () => {
   const [data, setData] = useState<StudentScore[]>([]);
   const [chartData, setChartData] = useState<any>(null);
   const [chartTitle, setChartTitle] = useState<string>('');
-
   const [selectedSubject, setSelectedSubject] = useState<string>('toan');
+  const [selectedExamGroup, setSelectedExamGroup] = useState<string>(examGroups[0].code); // Default to the first exam group
+  const [showSubjectDistribution, setShowSubjectDistribution] = useState<boolean>(true); // Track subject-specific or group-specific distribution
+  const [nationalRanking, setNationalRanking] = useState<number | null>(null);
+  const [provinceRanking, setProvinceRanking] = useState<number | null>(null);
+  const [higherThan, setHigherThan] = useState<number | null>(null);
+  const [lowerThan, setLowerThan] = useState<number | null>(null);
+  const [percentage, setPercentage] = useState<number | null>(null);
 
   useEffect(() => {
     fetch('/diem_thi_thpt_2024.csv')
       .then(response => response.text())
       .then(text => {
-        Papa.parse(text, {
-          header: true,
-          complete: (results) => {
-            setData(results.data as StudentScore[]);
-          },
-        });
+        const result = Papa.parse<StudentScore>(text, { header: true }).data;
+        setData(result);
       });
   }, []);
+
+  useEffect(() => {
+    handleStatistics();
+  }, [showSubjectDistribution, selectedSubject, selectedExamGroup]);
 
   const handleSearch = () => {
     let sbd = studentId;
@@ -134,62 +153,257 @@ const ScoreChecker: React.FC = () => {
     const scores = data
       .map(d => parseFloat(d[subject]))
       .filter(score => !isNaN(score) && score !== null && score !== undefined);
-
+  
     const stepMap: { [key: string]: number } = {
       'toan': 0.2,
       'ngu_van': 0.25,
       'ngoai_ngu': 0.2,
     };
-
+  
     const step = stepMap[subject] || 0.25;
-
+    const maxScore = 10;
+  
     const scoreDistribution: { [key: string]: number } = {};
-
-    for (let i = 0; i <= 10; i += step) {
+  
+    for (let i = 0; i <= maxScore; i += step) {
       const score = i.toFixed(2);
       scoreDistribution[score] = 0;
     }
-
+  
     scores.forEach(score => {
-      const specificScore = score;
-      const scoreKey = specificScore.toFixed(2);
-      if (scoreDistribution.hasOwnProperty(scoreKey)) {
-        scoreDistribution[scoreKey] = (scoreDistribution[scoreKey] || 0) + 1;
+      const specificScore = score.toFixed(2);
+      if (scoreDistribution.hasOwnProperty(specificScore)) {
+        scoreDistribution[specificScore] = (scoreDistribution[specificScore] || 0) + 1;
       }
     });
+  
+    return scoreDistribution;
+  };
+  
+  //========================================================================================================================================
+  const generateGroupScoreDistribution = (groupCode: string) => {
+
+    useEffect(() => {
+      fetch('/diem_thi_khoi_thpt_2024.csv')
+        .then(response => response.text())
+        .then(text => {
+          const result = Papa.parse<StudentScore>(text, { header: true }).data;
+          setData(result);
+        });
+    }, []);
+  
+    useEffect(() => {
+      handleStatistics();
+    }, [showSubjectDistribution, selectedSubject, selectedExamGroup]);
+  
+    const handleSearch = () => {
+      let sbd = studentId;
+      if (sbd.length === 7) {
+        sbd = '0' + sbd;
+      }
+      const student = data.find((d) => d.sbd === sbd);
+      setStudentScore(student || null);
+    };
+
+    const subjects = examGroupMap[groupCode];
+    if (!subjects) {
+      console.error(`Subjects not found for group ${groupCode}`);
+      return {};
+    }
+  
+    const scoreDistribution: { [key: string]: number } = {};
+    const step = 0.1;
+    const maxScore = 30;
+  
+    // Initialize score distribution with all possible scores from 0 to 30 with step 0.1
+    for (let i = 0; i <= maxScore; i += step) {
+      const scoreKey = i.toFixed(2);
+      scoreDistribution[scoreKey] = 0;
+    }
+  
+    // Calculate total scores for each student and populate score distribution
+    data.forEach(d => {
+      // Check if the student has scores for all subjects in the group
+      if (subjects.every(subject => d.hasOwnProperty(subject) && d[subject] !== '' && !isNaN(parseFloat(d[subject])))) {
+        const totalScore = subjects.reduce((acc, subject) => {
+          const score = parseFloat(d[subject]);
+          return isNaN(score) ? acc : acc + score;
+        }, 0);
+  
+        const roundedTotalScore = Math.round(totalScore * 10) / 10; // Round total score to nearest 0.1
+        const scoreKey = roundedTotalScore.toFixed(2);
+  
+        if (scoreDistribution.hasOwnProperty(scoreKey)) {
+          scoreDistribution[scoreKey]++;
+        }
+      } else {
+        console.warn(`Student with ID ${d.sbd} does not have valid scores for all subjects in group ${groupCode}`);
+      }
+    });
+  
+    // Log score distribution to console
+    console.log(`Score distribution for group ${groupCode}:`, scoreDistribution);
 
     return scoreDistribution;
   };
-
+  
+//======================================================================================================================================== 
+  
   const handleStatistics = () => {
     if (!studentScore) return;
+  
+    if (showSubjectDistribution) {
+      const scoreDistribution = generateScoreDistribution(selectedSubject);
+      const studentScoreValue = parseFloat(studentScore[selectedSubject] || '0');
+  
+      const backgroundColors = Object.keys(scoreDistribution).map(key => {
+        return parseFloat(key) === studentScoreValue ? 'rgba(255, 99, 132, 0.6)' : 'rgba(75, 192, 192, 0.2)';
+      });
+  
+      const borderColors = Object.keys(scoreDistribution).map(key => {
+        return parseFloat(key) === studentScoreValue ? 'rgba(255, 99, 132, 1)' : 'rgba(75, 192, 192, 1)';
+      });
+  
+      const chartData = {
+        labels: Object.keys(scoreDistribution),
+        datasets: [
+          {
+            label: 'Phổ điểm',
+            data: Object.values(scoreDistribution),
+            backgroundColor: backgroundColors,
+            borderColor: borderColors,
+            borderWidth: 1,
+          }
+        ],
+      };
+  
+      setChartTitle(subjectMap[selectedSubject] || selectedSubject);
+      setChartData(chartData);
 
-    const scoreDistribution = generateScoreDistribution(selectedSubject);
-    const studentScoreValue = parseFloat(studentScore[selectedSubject] || '0');
+      // Tính toán thống kê cho phân phối theo môn học cụ thể
+      // Convert scoreDistribution keys to numbers and sort in descending order
+      // Convert scoreDistribution to an array of [score, count] pairs and sort by score in descending order
+    const sortedScoreEntries = Object.entries(scoreDistribution)
+    .map(([score, count]) => [parseFloat(score), count])
+    .sort((a, b) => b[0] - a[0]);
 
-    const backgroundColors = Object.keys(scoreDistribution).map(key => {
-      return parseFloat(key) === studentScoreValue ? 'rgba(255, 99, 132, 0.6)' : 'rgba(75, 192, 192, 0.2)';
-    });
+    let higherCount = 0;
 
-    const borderColors = Object.keys(scoreDistribution).map(key => {
-      return parseFloat(key) === studentScoreValue ? 'rgba(255, 99, 132, 1)' : 'rgba(75, 192, 192, 1)';
-    });
+    // Iterate through sorted scores to find the count of students with higher scores
+    for (let i = 0; i < sortedScoreEntries.length; i++) {
+      const [score, count] = sortedScoreEntries[i];
 
-    const chartData = {
-      labels: Object.keys(scoreDistribution),
-      datasets: [
-        {
-          label: 'Phổ điểm',
-          data: Object.values(scoreDistribution),
-          backgroundColor: backgroundColors,
-          borderColor: borderColors,
-          borderWidth: 1,
-        }
-      ],
-    };
+      if (score > studentScoreValue) {
+        higherCount += count;
+      } else {
+        break; // Stop once we reach the student's score or lower
+      }
+    }
 
-    setChartTitle(subjectMap[selectedSubject] || selectedSubject);
-    setChartData(chartData);
+    // Calculate lowerCount and percentage
+    const totalCount = sortedScoreEntries.reduce((acc, [score, count]) => acc + count, 0);
+    const lowerCount = totalCount - higherCount - (scoreDistribution[studentScoreValue] || 0);
+    const percent = (higherCount / totalCount) * 100;
+    
+    // Province ranking calculation
+    const studentProvince = studentScore.sbd.slice(0, 2);
+    const provinceScores = data
+      .filter(d => d.sbd.slice(0, 2) === studentProvince)
+      .map(d => parseFloat(d[selectedSubject] || '0'))
+      .filter(score => !isNaN(score))
+      .sort((a, b) => b - a);
+
+    const provinceScoreDistribution = provinceScores.reduce((acc, score) => {
+      const scoreKey = score.toFixed(2);
+      acc[scoreKey] = (acc[scoreKey] || 0) + 1;
+      return acc;
+    }, {});
+
+    const sortedProvinceScoreEntries = Object.entries(provinceScoreDistribution)
+      .map(([score, count]) => [parseFloat(score), count])
+      .sort((a, b) => b[0] - a[0]);
+
+    let provinceHigherCount = 0;
+
+    // Iterate through sorted province scores to find the count of students with higher scores
+    for (let i = 0; i < sortedProvinceScoreEntries.length; i++) {
+      const [score, count] = sortedProvinceScoreEntries[i];
+
+      if (score > studentScoreValue) {
+        provinceHigherCount += count;
+      } else {
+        break; // Stop once we reach the student's score or lower
+      }
+    }
+
+    const provinceTotalCount = sortedProvinceScoreEntries.reduce((acc, [score, count]) => acc + count, 0);
+    const provinceLowerCount = sortedProvinceScoreEntries
+      .filter(([score]) => score < studentScoreValue)
+      .reduce((acc, [score, count]) => acc + count, 0);
+
+    
+    setHigherThan(higherCount);
+    setNationalRanking(higherCount); // Not using national rank
+    setProvinceRanking(provinceHigherCount);
+    // setProvinceRanking(null);
+    setHigherThan(higherCount);
+    setLowerThan(lowerCount);
+    setPercentage(percent);
+    } else {
+      
+      const scoreDistribution = generateGroupScoreDistribution(selectedExamGroup);
+      const studentTotalScore = Object.keys(studentScore)
+        .filter(key => key !== 'sbd' && key !== 'ma_ngoai_ngu')
+        .reduce((acc, key) => acc + parseFloat(studentScore[key] || '0'), 0);
+  
+      const studentTotalScoreRounded = Math.round(studentTotalScore * 10) / 10;
+      const studentTotalScoreKey = studentTotalScoreRounded.toFixed(2);
+      const studentCount = scoreDistribution[studentTotalScoreKey] || 0;
+  
+      const sortedScores = Object.keys(scoreDistribution).map(parseFloat).sort((a, b) => b - a);
+      const studentRank = sortedScores.findIndex(score => score === studentTotalScoreRounded) + 1;
+  
+      const totalCount = sortedScores.reduce((acc, key) => acc + scoreDistribution[key], 0);
+      const higherCount = sortedScores.filter(score => score > studentTotalScoreRounded)
+        .reduce((acc, key) => acc + scoreDistribution[key], 0);
+  
+      const lowerCount = sortedScores.filter(score => score < studentTotalScoreRounded)
+        .reduce((acc, key) => acc + scoreDistribution[key], 0);
+  
+      const percent = ((totalCount - higherCount) / totalCount) * 100;
+  
+      setNationalRanking(studentRank);
+      setProvinceRanking(null); // Assuming not tracked at group level
+      setHigherThan(higherCount);
+      setLowerThan(lowerCount);
+      setPercentage(percent);
+  
+      const backgroundColors = Object.keys(scoreDistribution).map(key => {
+        const score = parseFloat(key);
+        return score === studentTotalScore ? 'rgba(255, 99, 132, 0.6)' : 'rgba(75, 192, 192, 0.2)';
+      });
+  
+      const borderColors = Object.keys(scoreDistribution).map(key => {
+        const score = parseFloat(key);
+        return score === studentTotalScore ? 'rgba(255, 99, 132, 1)' : 'rgba(75, 192, 192, 1)';
+      });
+  
+      const chartData = {
+        labels: Object.keys(scoreDistribution),
+        datasets: [
+          {
+            label: 'Phổ điểm khối',
+            data: Object.values(scoreDistribution),
+            backgroundColor: backgroundColors,
+            borderColor: borderColors,
+            borderWidth: 1,
+          }
+        ],
+      };
+  
+      setChartTitle(examGroups.find(group => group.code === selectedExamGroup)?.name || '');
+      setChartData(chartData);
+    }
   };
 
   const getProvinceName = (sbd: string) => {
@@ -281,22 +495,101 @@ const ScoreChecker: React.FC = () => {
         <div>
           <div className="mb-3">
             <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
+              value={showSubjectDistribution ? selectedSubject : selectedExamGroup}
+              onChange={(e) => {
+                if (showSubjectDistribution) {
+                  setSelectedSubject(e.target.value);
+                } else {
+                  setSelectedExamGroup(e.target.value);
+                }
+              }}
               className="form-select"
             >
-              {Object.keys(subjectMap).map(key => (
-                <option key={key} value={key}>{subjectMap[key]}</option>
-              ))}
+              {showSubjectDistribution
+                ? Object.keys(subjectMap).map(key => (
+                    <option key={key} value={key}>
+                      {subjectMap[key]}
+                    </option>
+                  ))
+                : examGroups.map(group => (
+                    <option key={group.code} value={group.code}>
+                      {group.name}
+                    </option>
+                  ))}
             </select>
           </div>
-          <button onClick={handleStatistics} className="btn btn-primary mb-4">
-            Xem phổ điểm
-          </button>
+          <div className="mb-3">
+            <button
+              className={`btn ${showSubjectDistribution ? 'btn-primary' : 'btn-outline-primary'} me-2`}
+              onClick={() => {
+                setShowSubjectDistribution(true);
+                handleStatistics();
+              }}
+            >
+              Phổ điểm môn
+            </button>
+            <button
+              className={`btn ${!showSubjectDistribution ? 'btn-primary' : 'btn-outline-primary'} me-2`}
+              onClick={() => {
+                setShowSubjectDistribution(false);
+                handleStatistics();
+              }}
+            >
+              Phổ điểm khối
+            </button>
+          </div>
           {chartData && (
-            <div>
-              <h3 className="text-center mb-4">{chartTitle}</h3>
+            <div className="container mt-5 text-center">
+              <h3 className="text-center mb-4">Phổ điểm {chartTitle}</h3>
               <Bar data={chartData} options={chartOptions} />
+              <h3 className="text-lg font-bold mt-4">Thống kê chi tiết</h3>
+                {showSubjectDistribution ? (
+                  <div class="table-responsive text-lg text-center" >
+                  <table class="table table-bordered table-striped">
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Xếp hạng quốc gia:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{nationalRanking+1}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Xếp hạng tỉnh/thành:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{provinceRanking+1 ? `${provinceRanking+1} (${provinceMap[studentScore?.sbd.slice(0, 2)]})` : '-'}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Số thí sinh cao điểm hơn:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{higherThan}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Số thí sinh thấp điểm hơn:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{lowerThan ? `${lowerThan} (Chiếm ${(100-percentage).toFixed(2)}%)` : '-'}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Điểm thuộc nhóm:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{percentage ? `${percentage.toFixed(2)}%` : '-'}</td>
+                    </tr>
+                  </table>
+                  </div>
+                ) : (
+                  <div class="table-responsive" >
+                  <table class="table table-bordered table-striped">
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Xếp hạng quốc gia:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{nationalRanking}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Số thí sinh cao hơn:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{higherThan}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Số thí sinh thấp hơn:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{lowerThan}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">Điểm thuộc nhóm:</td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">{percentage ? `${percentage.toFixed(2)}%` : '-'}</td>
+                    </tr>
+                    </table>
+                  </div>
+                )}
             </div>
           )}
         </div>
