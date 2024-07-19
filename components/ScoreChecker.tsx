@@ -99,16 +99,20 @@ const subjectMap: { [key: string]: string } = {
 };
 
 const examGroups = [
-  { code: 'A00', name: 'Khối A00 - Toán, Vật lý, Hóa học' },
-  { code: 'A01', name: 'Khối A01 - Toán, Vật lý, Tiếng Anh' },
-  { code: 'A02', name: 'Khối A02 - Toán, Vật lí , Sinh học' },
+  { code: 'khoi_A_A00', name: 'Khối A00 - Toán, Vật lý, Hóa học' },
+  { code: 'khoi_A_A01', name: 'Khối A01 - Toán, Vật lý, Tiếng Anh' },
+  { code: 'khoi_A_A05', name: 'Khối A05 - Toán, Hoá, học, Lịch sử' },
+  { code: 'khoi_A_A06', name: 'Khối A06 - Toán, Hoá, học, Địa lí' },
+  { code: 'khoi_A_A08', name: 'Khối A08 - Toán, Lịch sử, GDCN' },
+  { code: 'khoi_D_D01', name: 'Khối D01 - Toán, Văn , Tiếng Anh' },
   // Add other exam groups here
 ];
 
-const examGroupMap: { [key: string]: string[] } = {
-  'A00': ['toan', 'vat_li', 'hoa_hoc'],
-  'A01': ['toan', 'vat_li', 'ngoai_ngu'],
-  'A02': ['toan', 'vat_li', 'sinh_hoc'],
+const examGroupMap: { [key: string]: string } = {
+  'khoi_A_A00': 'toan - vat_li - hoa_hoc',
+  'khoi_A_A01': 'toan - vat_li - ngoai_ngu',
+  'khoi_A_A02': 'toan - vat_li - sinh_hoc',
+  'khoi_D_D01': 'toan - van_hoc - ngoai_ngu',
   // Map other exam groups to their corresponding subjects
 };
 
@@ -116,6 +120,7 @@ const ScoreChecker: React.FC = () => {
   const [studentId, setStudentId] = useState('');
   const [studentScore, setStudentScore] = useState<StudentScore | null>(null);
   const [data, setData] = useState<StudentScore[]>([]);
+  const [groupData, setGroupData] = useState<StudentScore[]>([]);
   const [chartData, setChartData] = useState<any>(null);
   const [chartTitle, setChartTitle] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('toan');
@@ -135,6 +140,16 @@ const ScoreChecker: React.FC = () => {
         setData(result);
       });
   }, []);
+
+  useEffect(() => {
+    fetch('/diem_thi_khoi_thpt_2024.csv')
+      .then(response => response.text())
+      .then(text => {
+        const result = Papa.parse<StudentScore>(text, { header: true }).data;
+        setGroupData(result);
+      });
+  }, []);
+  
 
   useEffect(() => {
     handleStatistics();
@@ -182,68 +197,40 @@ const ScoreChecker: React.FC = () => {
   
   //========================================================================================================================================
   const generateGroupScoreDistribution = (groupCode: string) => {
-
-    useEffect(() => {
-      fetch('/diem_thi_khoi_thpt_2024.csv')
-        .then(response => response.text())
-        .then(text => {
-          const result = Papa.parse<StudentScore>(text, { header: true }).data;
-          setData(result);
-        });
-    }, []);
+    const scores = groupData
+      .map(d => parseFloat(d[groupCode]))
+      .filter(score => !isNaN(score) && score !== null && score !== undefined);
   
-    useEffect(() => {
-      handleStatistics();
-    }, [showSubjectDistribution, selectedSubject, selectedExamGroup]);
+    // const stepMap: { [key: string]: number } = {
+    //   'toan': 0.2,
+    //   'ngu_van': 0.25,
+    //   'ngoai_ngu': 0.2,
+    // };
   
-    const handleSearch = () => {
-      let sbd = studentId;
-      if (sbd.length === 7) {
-        sbd = '0' + sbd;
-      }
-      const student = data.find((d) => d.sbd === sbd);
-      setStudentScore(student || null);
-    };
-
-    const subjects = examGroupMap[groupCode];
-    if (!subjects) {
-      console.error(`Subjects not found for group ${groupCode}`);
-      return {};
-    }
-  
-    const scoreDistribution: { [key: string]: number } = {};
     const step = 0.1;
     const maxScore = 30;
   
-    // Initialize score distribution with all possible scores from 0 to 30 with step 0.1
+    const scoreDistribution: { [key: string]: number } = {};
+    
+    const roundToSpecificStep = (score: number, step: number): number => {
+      const remainder = score % step;
+      if (remainder === 0) return score;
+      return remainder >= step / 2 ? score + step - remainder : score - remainder;
+    };
+    
     for (let i = 0; i <= maxScore; i += step) {
-      const scoreKey = i.toFixed(2);
-      scoreDistribution[scoreKey] = 0;
+      const score = i.toFixed(2);
+      scoreDistribution[score] = 0;
     }
   
-    // Calculate total scores for each student and populate score distribution
-    data.forEach(d => {
-      // Check if the student has scores for all subjects in the group
-      if (subjects.every(subject => d.hasOwnProperty(subject) && d[subject] !== '' && !isNaN(parseFloat(d[subject])))) {
-        const totalScore = subjects.reduce((acc, subject) => {
-          const score = parseFloat(d[subject]);
-          return isNaN(score) ? acc : acc + score;
-        }, 0);
-  
-        const roundedTotalScore = Math.round(totalScore * 10) / 10; // Round total score to nearest 0.1
-        const scoreKey = roundedTotalScore.toFixed(2);
-  
-        if (scoreDistribution.hasOwnProperty(scoreKey)) {
-          scoreDistribution[scoreKey]++;
-        }
-      } else {
-        console.warn(`Student with ID ${d.sbd} does not have valid scores for all subjects in group ${groupCode}`);
+    scores.forEach(score => {
+      const specificScore = score.toFixed(2);
+      // const specificScore = roundToSpecificStep(score, step).toFixed(2);
+      if (scoreDistribution.hasOwnProperty(specificScore)) {
+        scoreDistribution[specificScore] = (scoreDistribution[specificScore] || 0) + 1;
       }
     });
   
-    // Log score distribution to console
-    console.log(`Score distribution for group ${groupCode}:`, scoreDistribution);
-
     return scoreDistribution;
   };
   
