@@ -196,43 +196,72 @@ const ScoreChecker: React.FC = () => {
   };
   
   //========================================================================================================================================
+  // const generateGroupScoreDistribution = (groupCode: string) => {
+  //   const scores = groupData
+  //     .map(d => parseFloat(d[groupCode]))
+  //     .filter(score => !isNaN(score) && score !== null && score !== undefined);
+  
+  //   // const stepMap: { [key: string]: number } = {
+  //   //   'toan': 0.2,
+  //   //   'ngu_van': 0.25,
+  //   //   'ngoai_ngu': 0.2,
+  //   // };
+  
+  //   const step = 0.5;
+  //   const maxScore = 30;
+  
+  //   const scoreDistribution: { [key: string]: number } = {};
+    
+  //   const roundToSpecificStep = (score: number, step: number): number => {
+  //     const remainder = score % step;
+  //     if (remainder === 0) return score;
+  //     return remainder >= step / 2 ? score + step - remainder : score - remainder;
+  //   };
+    
+  //   for (let i = 0; i <= maxScore; i += step) {
+  //     const score = i.toFixed(2);
+  //     scoreDistribution[score] = 0;
+  //   }
+  
+  //   scores.forEach(score => {
+  //     const specificScore = score.toFixed(2);
+  //     // const specificScore = roundToSpecificStep(score, step).toFixed(2);
+  //     if (scoreDistribution.hasOwnProperty(specificScore)) {
+  //       scoreDistribution[specificScore] = (scoreDistribution[specificScore] || 0) + 1;
+  //     }
+  //   });
+  
+  //   return scoreDistribution;
+  // };
+
   const generateGroupScoreDistribution = (groupCode: string) => {
     const scores = groupData
       .map(d => parseFloat(d[groupCode]))
       .filter(score => !isNaN(score) && score !== null && score !== undefined);
   
-    // const stepMap: { [key: string]: number } = {
-    //   'toan': 0.2,
-    //   'ngu_van': 0.25,
-    //   'ngoai_ngu': 0.2,
-    // };
-  
-    const step = 0.1;
+    const step = 0.5;
     const maxScore = 30;
   
+    // Khởi tạo đối tượng để lưu trữ phân bố điểm
     const scoreDistribution: { [key: string]: number } = {};
-    
-    const roundToSpecificStep = (score: number, step: number): number => {
-      const remainder = score % step;
-      if (remainder === 0) return score;
-      return remainder >= step / 2 ? score + step - remainder : score - remainder;
-    };
-    
+  
+    // Tạo các bước điểm từ 0 đến 30 với bước 0.5
     for (let i = 0; i <= maxScore; i += step) {
-      const score = i.toFixed(2);
+      const score = i.toFixed(1);
       scoreDistribution[score] = 0;
     }
   
+    // Đếm số lượng thí sinh trong từng khoảng điểm
     scores.forEach(score => {
-      const specificScore = score.toFixed(2);
-      // const specificScore = roundToSpecificStep(score, step).toFixed(2);
-      if (scoreDistribution.hasOwnProperty(specificScore)) {
-        scoreDistribution[specificScore] = (scoreDistribution[specificScore] || 0) + 1;
+      const roundedScore = (Math.floor(score / step) * step).toFixed(1);
+      if (scoreDistribution.hasOwnProperty(roundedScore)) {
+        scoreDistribution[roundedScore] += 1;
       }
     });
   
     return scoreDistribution;
   };
+  
   
 //======================================================================================================================================== 
   
