@@ -163,6 +163,8 @@ const ScoreChecker: React.FC = () => {
   const [showSubjectDistribution, setShowSubjectDistribution] =
     useState<boolean>(true); // Track subject-specific or group-specific distribution
   const [nationalRanking, setNationalRanking] = useState<number | null>(null);
+  const [yourcores, setyourcores] = useState<number | null>(null);
+  const [yourgroupcores, setyourgroupcores] = useState<number | null>(null);
   const [provinceRanking, setProvinceRanking] = useState<number | null>(null);
   const [higherThan, setHigherThan] = useState<number | null>(null);
   const [lowerThan, setLowerThan] = useState<number | null>(null);
@@ -234,43 +236,6 @@ const ScoreChecker: React.FC = () => {
   };
 
   //========================================================================================================================================
-  // const generateGroupScoreDistribution = (groupCode: string) => {
-  //   const scores = groupData
-  //     .map(d => parseFloat(d[groupCode]))
-  //     .filter(score => !isNaN(score) && score !== null && score !== undefined);
-
-  //   // const stepMap: { [key: string]: number } = {
-  //   //   'toan': 0.2,
-  //   //   'ngu_van': 0.25,
-  //   //   'ngoai_ngu': 0.2,
-  //   // };
-
-  //   const step = 0.5;
-  //   const maxScore = 30;
-
-  //   const scoreDistribution: { [key: string]: number } = {};
-
-  //   const roundToSpecificStep = (score: number, step: number): number => {
-  //     const remainder = score % step;
-  //     if (remainder === 0) return score;
-  //     return remainder >= step / 2 ? score + step - remainder : score - remainder;
-  //   };
-
-  //   for (let i = 0; i <= maxScore; i += step) {
-  //     const score = i.toFixed(2);
-  //     scoreDistribution[score] = 0;
-  //   }
-
-  //   scores.forEach(score => {
-  //     const specificScore = score.toFixed(2);
-  //     // const specificScore = roundToSpecificStep(score, step).toFixed(2);
-  //     if (scoreDistribution.hasOwnProperty(specificScore)) {
-  //       scoreDistribution[specificScore] = (scoreDistribution[specificScore] || 0) + 1;
-  //     }
-  //   });
-
-  //   return scoreDistribution;
-  // };
 
   const generateGroupScoreDistribution = (groupCode: string) => {
     const scores = groupData
@@ -419,16 +384,17 @@ const ScoreChecker: React.FC = () => {
       setLowerThan(lowerCount);
       setPercentage(percent);
     } else {
+      //========================================================================================================================================
       const scoreDistribution =
         generateGroupScoreDistribution(selectedExamGroup);
-      const studentTotalScore = Object.keys(studentScore)
-        .filter((key) => key !== "sbd" && key !== "ma_ngoai_ngu")
-        .reduce((acc, key) => acc + parseFloat(studentScore[key] || "0"), 0);
-
-      const studentTotalScoreRounded = Math.round(studentTotalScore * 10) / 10;
-
-      // Tìm điểm gần nhất với khoảng cách 0.5
-      const closestScore = Math.round(studentTotalScoreRounded * 2) / 2;
+      // Tìm hàng thí sinh dựa trên ID
+      const studentRow = groupData.find((row) => row.sbd === studentId);
+      const studentTotalScoreRounded = 0;
+      if (studentRow) {
+        // Lấy điểm khối của thí sinh dựa trên khối điểm được chọn
+        const studentTotalScoreRounded  = studentRow[selectedExamGroup] || "0";
+        // Tìm điểm gần nhất với khoảng cách 0.5 
+      const closestScore = Math.round(studentTotalScoreRounded * 2) / 2; 
       const studentCount = scoreDistribution[closestScore.toFixed(1)] || 0;
       const sortedScores = Object.keys(scoreDistribution)
         .map(parseFloat)
@@ -449,13 +415,13 @@ const ScoreChecker: React.FC = () => {
         .reduce((acc, key) => acc + scoreDistribution[key.toFixed(1)], 0);
 
       const percent = ((totalCount - higherCount) / totalCount) * 100;
-
+      const yourgroupcores = studentTotalScoreRounded;
+      setyourgroupcores(yourgroupcores);
       setNationalRanking(studentRank);
       setProvinceRanking(null); // Assuming not tracked at group level
       setHigherThan(higherCount);
       setLowerThan(lowerCount);
       setPercentage(percent);
-
       const backgroundColors = Object.keys(scoreDistribution).map((key) => {
         const score = parseFloat(key);
         return score === closestScore
@@ -487,7 +453,48 @@ const ScoreChecker: React.FC = () => {
         examGroups.find((group) => group.code === selectedExamGroup)?.name || ""
       );
       setChartData(chartData);
+      
+        console.log(
+          `Điểm của thí sinh ${studentId} cho khối ${selectedExamGroup}: ${studentTotalScoreRounded }`
+        );
+      } else {
+        console.log(`Không tìm thấy thí sinh với ID ${studentId}`);
+        console.log(groupData);
+
+      }
+
+      // // Tìm điểm gần nhất với khoảng cách 0.5 
+      // const closestScore = Math.round(studentTotalScoreRounded * 2) / 2; 
+      // const studentCount = scoreDistribution[closestScore.toFixed(1)] || 0;
+      // const sortedScores = Object.keys(scoreDistribution)
+      //   .map(parseFloat)
+      //   .sort((a, b) => b - a);
+      // const studentRank =
+      //   sortedScores.findIndex((score) => score === closestScore) + 1;
+
+      // const totalCount = sortedScores.reduce(
+      //   (acc, key) => acc + scoreDistribution[key.toFixed(1)],
+      //   0
+      // );
+      // const higherCount = sortedScores
+      //   .filter((score) => score > closestScore)
+      //   .reduce((acc, key) => acc + scoreDistribution[key.toFixed(1)], 0);
+
+      // const lowerCount = sortedScores
+      //   .filter((score) => score < closestScore)
+      //   .reduce((acc, key) => acc + scoreDistribution[key.toFixed(1)], 0);
+
+      // const percent = ((totalCount - higherCount) / totalCount) * 100;
+
+      // setNationalRanking(studentRank);
+      // setProvinceRanking(null); // Assuming not tracked at group level
+      // setHigherThan(higherCount);
+      // setLowerThan(lowerCount);
+      // setPercentage(percent);
+
+      
     }
+    //========================================================================================================================================
   };
 
   const getProvinceName = (sbd: string) => {
@@ -644,6 +651,14 @@ const ScoreChecker: React.FC = () => {
                   <table class="table table-bordered table-striped">
                     <tr>
                       <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        Điểm của bạn:
+                      </td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
+                        null
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         Xếp hạng quốc gia:
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
@@ -695,6 +710,14 @@ const ScoreChecker: React.FC = () => {
               ) : (
                 <div class="table-responsive">
                   <table class="table table-bordered table-striped">
+                  <tr>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                        Điểm tổ hợp của bạn:
+                      </td>
+                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {yourgroupcores}
+                      </td>
+                    </tr>
                     <tr>
                       <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                         Xếp hạng quốc gia:
