@@ -3,6 +3,7 @@ import Table from "react-bootstrap/Table";
 import Button from "react-bootstrap/Button";
 import CreateModal from "./create.modal";
 import UpdateModal from "./update.modal";
+import DeleteModal from "./delete.modal";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -14,6 +15,7 @@ const AppTable = (props: IProps) => {
   console.log(">>> check progs blogs :", blogs);
 
   const [blog, setBlog] = useState<IBlog | null>(null);
+  const [showModalDelete, setShowModalDelete] = useState<boolean>(false);
   const [showModalUpdate, setShowModalUpdate] = useState<boolean>(false);
   const [showModalCreate, setShowModalCreate] = useState<boolean>(false);
   return (
@@ -60,7 +62,12 @@ const AppTable = (props: IProps) => {
                   >
                     Edit
                   </button>
-                  <button className="mx-1 my-1 btn btn-danger">Delete</button>
+                  <button className="mx-1 my-1 btn btn-danger"
+                  onClick={() => {
+                    setBlog(item);
+                    setShowModalDelete(true);
+                  }}
+                  >Delete</button>
                 </td>
               </tr>
             );
@@ -74,6 +81,12 @@ const AppTable = (props: IProps) => {
       <UpdateModal
         showModalUpdate={showModalUpdate}
         setShowModalUpdate={setShowModalUpdate}
+        blog={blog}
+        setBlog={setBlog}
+      />
+      <DeleteModal
+        showModalDelete={showModalDelete}
+        setShowModalDelete={setShowModalDelete}
         blog={blog}
         setBlog={setBlog}
       />

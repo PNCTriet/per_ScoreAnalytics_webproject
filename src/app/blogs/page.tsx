@@ -1,10 +1,9 @@
-'use client'
+"use client";
 import AppTable from "../../../components/app.table";
 import useSWR from "swr";
 
 const BlogsPage = () => {
-    const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
+  const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const { data, error, isLoading } = useSWR(
     "http://localhost:8000/blogs",
     fetcher,
@@ -15,7 +14,7 @@ const BlogsPage = () => {
     }
   );
 
-  if (isLoading) return <div>is loading....</div>
+  if (isLoading) return <div>is loading....</div>;
   return (
     <div>
       <AppTable blogs={data} />
