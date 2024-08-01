@@ -376,6 +376,9 @@ const ScoreChecker: React.FC = () => {
         .filter(([score]) => score < studentScoreValue)
         .reduce((acc, [score, count]) => acc + count, 0);
 
+      const yourcores = studentScoreValue;
+      setyourcores(yourcores);
+
       setHigherThan(higherCount);
       setNationalRanking(higherCount); // Not using national rank
       setProvinceRanking(provinceHigherCount);
@@ -654,7 +657,7 @@ const ScoreChecker: React.FC = () => {
                         Điểm của bạn:
                       </td>
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
-                        null
+                        {yourcores}
                       </td>
                     </tr>
                     <tr>
