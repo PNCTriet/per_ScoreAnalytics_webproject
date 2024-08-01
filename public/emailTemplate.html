@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Template</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #333;
+    }
+    .container {
+      width: 80%;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    h1 {
+      color: #007bff;
+    }
+    p {
+      font-size: 16px;
+    }
+    .logo {
+      max-width: 20px;
+    }
+
+    .logo img {
+        max-width: 300px; /* Điều chỉnh kích thước theo nhu cầu */
+        height: auto; /* Giữ tỉ lệ ảnh */
+      }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <div class="logo">
+    <img src="https://fontmeme.com/permalink/240508/a0a2db44cf95ee3c25441c8005f90516.png" alt="Logo" />
+    </div>
+    <h1>Hello {{name}},</h1>
+    <p>{{body}}</p>
+    <p>Best regards,<br>Your Company</p>
+  </div>
+</body>
+</html>
