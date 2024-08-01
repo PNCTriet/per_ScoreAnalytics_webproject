@@ -1,29 +1,36 @@
-'use client'
-import { useRouter } from "next/navigation"
-import x from '@/style/app.module.css';
-import y from '@/style/appuser.module.css';
-import AppTable from '../../../components/app.table';
-import Button from 'react-bootstrap/Button'
-const VotenowUser = () => {
-    const router = useRouter()
+"use client";
+import { Button } from "react-bootstrap";
 
-    const handleBtn = () => {
-        router.push("/")
+export default function Home() {
+  const send = async () => {
+    try {
+      const response = await fetch("/api/sendEmail", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: "trietnguyenpham@gmail.com",
+          name: "trietnguyenpham",
+          subject: "Test Mail",
+          body: "Check out this link: youtube.com/@@banhcuonniengrang",
+        }),
+      });
+
+      const result = await response.json();
+      console.log(result.message || result.error);
+      console.log("SMTP_EMAIL:", process.env.SMTP_EMAIL);
+      console.log("SMTP_PASSWORD:", process.env.SMTP_PASSWORD);
+    } catch (error) {
+      console.error("Error sending email:", error);
     }
+  };
 
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black-100 p-4">
-            <h1 className={x['red']}>Votenow User</h1>
-            <Button 
-                onClick={handleBtn} 
-                variant="primary"
-            >
-                Back to Home
-            </Button>
-
-        
-        </div>
-    ) 
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-24 gap-4">
+      <Button type="button" onClick={send}>
+        Test
+      </Button>
+    </main>
+  );
 }
-
-export default VotenowUser;
