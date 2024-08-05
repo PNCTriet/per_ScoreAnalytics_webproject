@@ -12,7 +12,7 @@ export default function Home() {
   const send = async () => {
     setStatus(null); // Reset status
     try {
-      const response = await fetch('/api/sendEmail', { // Đảm bảo đường dẫn khớp với tên tệp API
+      const response = await fetch('/api/sendEmail', { 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
