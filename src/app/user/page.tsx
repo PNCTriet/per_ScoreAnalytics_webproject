@@ -10,7 +10,7 @@ export default function Home() {
   const [status, setStatus] = useState<string | null>(null);
 
   const send = async () => {
-    setStatus(null); // Reset status
+    setStatus(null); 
     try {
       const response = await fetch('/api/sendEmail', { 
         method: 'POST',
